@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SISWA
+  PEMBIMBING
+  KETUA_JURUSAN
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  nama     String
+  username String @unique
+  password String
+  role     Role   @default(SISWA)
+
+  nis       String? @unique
+  kelas     String?
+  jurusan   String?
+  tempatPkl String?
+
+  aktif Boolean @default(true)
+
+  attendances Attendance[]
+  journals    Journal[]
+  schedules   Schedule[]
+
+  // Pengajuan izin / sakit
+  leaveRequests LeaveRequest[]
+
+  // Riwayat absensi milik siswa
+  attendanceHistories AttendanceHistory[] @relation("AttendanceHistoryUser")
+
+  // Tindakan admin terhadap absensi
+  attendanceActions AttendanceHistory[] @relation("AttendanceHistoryAdmin")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  tanggal DateTime @default(now())
+
+  jamMasuk  DateTime?
+  jamPulang DateTime?
+
+  status String @default("HADIR")
+
+  alasanTerlambat   String?
+  alasanPulangTelat String?
+
+  fotoMasuk  String?
+  fotoPulang String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AttendanceHistory {
+  id Int @id @default(autoincrement())
+
+  attendanceId Int?
+  userId       Int
+  adminId      Int
+  action       String
+  reason       String
+
+  tanggal DateTime
+
+  jamMasuk  DateTime?
+  jamPulang DateTime?
+
+  status String
+
+  alasanTerlambat   String?
+  alasanPulangTelat String?
+
+  fotoMasuk  String?
+  fotoPulang String?
+
+  createdAt DateTime @default(now())
+
+  // Relasi ke siswa
+  user User @relation("AttendanceHistoryUser", fields: [userId], references: [id])
+
+  // Relasi ke admin
+  admin User @relation("AttendanceHistoryAdmin", fields: [adminId], references: [id])
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([attendanceId])
+  @@index([createdAt])
+}
+
+model Journal {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  tanggal DateTime @default(now())
+
+  kegiatan String
+  kendala  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Announcement {
+  id Int @id @default(autoincrement())
+
+  judul String
+  isi   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Schedule {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  hari String
+
+  jamMasuk  String
+  jamPulang String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LeaveRequest {
+  id Int @id @default(autoincrement())
+
+  // Siswa yang mengajukan
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  // Tanggal izin / sakit
+  tanggal DateTime
+
+  // IZIN atau SAKIT
+  status String
+
+  // Alasan dari siswa
+  alasan String
+
+  // MENUNGGU, DITERIMA, atau DITOLAK
+  statusPengajuan String @default("MENUNGGU")
+
+  // Catatan dari admin
+  catatanAdmin String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tanggal])
+  @@index([statusPengajuan])
+}
